@@ -1,8 +1,10 @@
 import React, { useMemo } from 'react';
-import { MapContainer, TileLayer, CircleMarker, Popup, GeoJSON, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, GeoJSON, useMap } from 'react-leaflet';
+import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { CapAlert } from '../types';
 import { TAIWAN_COUNTIES, findCounty } from '../data/taiwanCounties';
+import type { KmlStatus } from '../utils/kmzParser';
 
 interface Props {
   alerts: CapAlert[];
@@ -11,32 +13,68 @@ interface Props {
 
 interface CountyStatus {
   name: string;
-  lat: number;
-  lng: number;
   stopWork: boolean;
   stopSchool: boolean;
-  headlines: string[];
 }
 
-// Keep map viewport within Taiwan bounds
-function BoundsRestrictor() {
+const OUTER_ISLANDS = ['澎湖縣', '金門縣', '連江縣'];
+
+const STATUS_STYLE: Record<KmlStatus, { fillColor: string; fillOpacity: number; color: string; weight: number }> = {
+  'both-stopped':   { fillColor: '#ef4444', fillOpacity: 0.45, color: '#dc2626', weight: 1.5 },
+  'school-only':    { fillColor: '#3b82f6', fillOpacity: 0.45, color: '#2563eb', weight: 1.5 },
+  'work-only':      { fillColor: '#f97316', fillOpacity: 0.45, color: '#ea580c', weight: 1.5 },
+  'not-announced':  { fillColor: '#fbbf24', fillOpacity: 0.18, color: '#d97706', weight: 1 },
+  'normal':         { fillColor: '#94a3b8', fillOpacity: 0.06, color: '#94a3b8', weight: 0.5 },
+  'not-in-zone':    { fillColor: 'transparent', fillOpacity: 0, color: 'transparent', weight: 0 },
+};
+
+const ACTIVE_STATUSES: KmlStatus[] = ['both-stopped', 'school-only', 'work-only'];
+
+function statusLabel(status: KmlStatus): string {
+  if (status === 'both-stopped') return '停班停課';
+  if (status === 'school-only') return '停課（照常上班）';
+  if (status === 'work-only') return '停班（照常上課）';
+  return '';
+}
+
+function TaiwanFitBounds() {
   const map = useMap();
   React.useEffect(() => {
-    map.setMaxBounds([
-      [20.0, 116.0],
-      [27.0, 123.5],
-    ]);
+    // Bounds that include 金門 (lng ~118.4), 澎湖 (lng ~119.6), 馬祖 (lng ~120)
+    map.fitBounds([[20.4, 117.5], [26.5, 122.5]], { padding: [6, 6] });
+    map.setMaxBounds([[19.0, 115.0], [28.0, 125.0]]);
   }, [map]);
   return null;
+}
+
+const onEachKmlFeature = (feature: GeoJSON.Feature, layer: L.Layer) => {
+  const props = feature.properties as { countyName: string; status: KmlStatus } | null;
+  if (!props) return;
+  const { countyName, status } = props;
+  if (ACTIVE_STATUSES.includes(status)) {
+    (layer as L.Path).bindTooltip(countyName, {
+      permanent: true,
+      direction: 'center',
+      className: 'kml-county-label',
+    });
+  }
+  const label = statusLabel(status);
+  if (label) {
+    (layer as L.Path).bindPopup(`<strong>${countyName}</strong><br/>${label}`);
+  }
+};
+
+function kmlStyle(feature?: GeoJSON.Feature): L.PathOptions {
+  const status = (feature?.properties as { status?: KmlStatus } | null)?.status ?? 'normal';
+  return STATUS_STYLE[status] ?? STATUS_STYLE['normal'];
 }
 
 export const MapView: React.FC<Props> = ({ alerts, kmlGeoJSON }) => {
   const countyStatuses = useMemo<CountyStatus[]>(() => {
     const map = new Map<string, CountyStatus>();
     TAIWAN_COUNTIES.forEach((c) =>
-      map.set(c.name, { name: c.name, lat: c.lat, lng: c.lng, stopWork: false, stopSchool: false, headlines: [] }),
+      map.set(c.name, { name: c.name, stopWork: false, stopSchool: false }),
     );
-
     alerts.forEach((alert) => {
       if (alert.msgType === 'Cancel' || alert.status !== 'Actual') return;
       alert.info.forEach((info) => {
@@ -46,83 +84,64 @@ export const MapView: React.FC<Props> = ({ alerts, kmlGeoJSON }) => {
           const s = map.get(county.name)!;
           s.stopWork = s.stopWork || area.stopWork;
           s.stopSchool = s.stopSchool || area.stopSchool;
-          const hl = info.headline || info.event;
-          if (hl && !s.headlines.includes(hl)) s.headlines.push(hl);
         });
       });
     });
-
     return Array.from(map.values());
   }, [alerts]);
 
-  function markerColor(s: CountyStatus): string {
-    if (s.stopWork && s.stopSchool) return '#ef4444';
-    if (s.stopWork) return '#f97316';
-    if (s.stopSchool) return '#3b82f6';
-    return '#94a3b8';
-  }
+  const outerIslands = OUTER_ISLANDS.map((name) => {
+    const s = countyStatuses.find((c) => c.name === name) ?? { name, stopWork: false, stopSchool: false };
+    return s;
+  });
 
   return (
-    <MapContainer
-      center={[23.6, 120.9]}
-      zoom={7}
-      style={{ height: '100%', width: '100%' }}
-      minZoom={6}
-      maxZoom={13}
-    >
-      <BoundsRestrictor />
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-
-      {/* KMZ polygon overlay when available */}
-      {kmlGeoJSON && kmlGeoJSON.features.length > 0 && (
-        <GeoJSON
-          key={JSON.stringify(kmlGeoJSON.features.length)}
-          data={kmlGeoJSON}
-          style={() => ({
-            fillColor: '#ef4444',
-            fillOpacity: 0.25,
-            color: '#ef4444',
-            weight: 2,
-          })}
+    <div style={{ position: 'relative', height: '100%', width: '100%' }}>
+      <MapContainer
+        center={[23.8, 120.5]}
+        zoom={7}
+        style={{ height: '100%', width: '100%' }}
+        minZoom={6}
+        maxZoom={13}
+      >
+        <TaiwanFitBounds />
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-      )}
 
-      {countyStatuses.map((county) => {
-        const active = county.stopWork || county.stopSchool;
-        return (
-          <CircleMarker
-            key={county.name}
-            center={[county.lat, county.lng]}
-            radius={active ? 16 : 9}
-            pathOptions={{
-              fillColor: markerColor(county),
-              color: active ? '#fff' : '#64748b',
-              weight: active ? 2 : 1,
-              fillOpacity: active ? 0.9 : 0.3,
-            }}
-          >
-            <Popup>
-              <strong style={{ fontSize: 14 }}>{county.name}</strong>
-              {active ? (
-                <div style={{ marginTop: 6 }}>
-                  {county.stopWork && <div>🚫 停止上班</div>}
-                  {county.stopSchool && <div>📚 停止上課</div>}
-                  {county.headlines.map((h, i) => (
-                    <div key={i} style={{ marginTop: 6, fontSize: 12, color: '#555' }}>
-                      {h}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ marginTop: 4, color: '#666' }}>目前無停班停課通報</div>
-              )}
-            </Popup>
-          </CircleMarker>
-        );
-      })}
-    </MapContainer>
+        {kmlGeoJSON && kmlGeoJSON.features.length > 0 && (
+          <GeoJSON
+            key={kmlGeoJSON.features.length}
+            data={kmlGeoJSON}
+            style={kmlStyle}
+            onEachFeature={onEachKmlFeature}
+          />
+        )}
+      </MapContainer>
+
+      {/* Outer islands floating status panel */}
+      <div className="outer-islands-panel">
+        {outerIslands.map((island) => {
+          const active = island.stopWork || island.stopSchool;
+          const cls = island.stopWork && island.stopSchool
+            ? 'island-both'
+            : island.stopWork ? 'island-work'
+            : island.stopSchool ? 'island-school'
+            : 'island-normal';
+          return (
+            <div key={island.name} className={`island-chip ${cls}`}>
+              <span className="island-name">{island.name}</span>
+              <span className="island-status">
+                {island.stopWork && island.stopSchool ? '停班停課'
+                  : island.stopWork ? '停班'
+                  : island.stopSchool ? '停課'
+                  : '正常'}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 };

@@ -20,6 +20,7 @@ async function fetchBinary(path: string): Promise<ArrayBuffer> {
 export interface AlertData extends DataState {
   kmlFeatures: KmlFeature[];
   kmlGeoJSON: GeoJSON.FeatureCollection | null;
+  kmlDataTime: Date | null;
   refresh: () => void;
 }
 
@@ -34,6 +35,7 @@ export function useAlertData(refreshIntervalMinutes: RefreshInterval): AlertData
   });
   const [kmlFeatures, setKmlFeatures] = useState<KmlFeature[]>([]);
   const [kmlGeoJSON, setKmlGeoJSON] = useState<GeoJSON.FeatureCollection | null>(null);
+  const [kmlDataTime, setKmlDataTime] = useState<Date | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchData = useCallback(async () => {
@@ -64,6 +66,11 @@ export function useAlertData(refreshIntervalMinutes: RefreshInterval): AlertData
           const features = await parseKmz(buf);
           setKmlFeatures(features);
           setKmlGeoJSON(featuresToGeoJSON(features));
+          const latest = features.reduce<Date | null>((best, f) => {
+            if (!f.updateTime) return best;
+            return !best || f.updateTime > best ? f.updateTime : best;
+          }, null);
+          setKmlDataTime(latest);
         })
         .catch((e) => console.warn('KMZ load failed:', e));
     } catch (err) {
@@ -84,5 +91,5 @@ export function useAlertData(refreshIntervalMinutes: RefreshInterval): AlertData
     };
   }, [fetchData, refreshIntervalMinutes]);
 
-  return { ...state, kmlFeatures, kmlGeoJSON, refresh: fetchData };
+  return { ...state, kmlFeatures, kmlGeoJSON, kmlDataTime, refresh: fetchData };
 }

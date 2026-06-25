@@ -4,6 +4,7 @@ import type { RefreshInterval } from '../types';
 interface Props {
   lastFetched: Date | null;
   latestDataTime: Date | null;
+  kmlDataTime: Date | null;
   nextRefreshAt: Date | null;
   loading: boolean;
   refreshInterval: RefreshInterval;
@@ -41,6 +42,7 @@ function formatCountdown(d: Date | null): string {
 export const StatusBar: React.FC<Props> = ({
   lastFetched,
   latestDataTime,
+  kmlDataTime,
   nextRefreshAt,
   loading,
   refreshInterval,
@@ -53,21 +55,23 @@ export const StatusBar: React.FC<Props> = ({
     return () => clearInterval(t);
   }, []);
 
-  const ago = formatAgo(latestDataTime);
-  const dataAge = latestDataTime
-    ? `${formatTime(latestDataTime)}（${ago}）`
-    : '尚無資料';
+  const capTime = latestDataTime ? formatTime(latestDataTime) : '尚無資料';
+  const kmlTime = kmlDataTime ? formatTime(kmlDataTime) : '尚無資料';
 
   return (
     <div className="status-bar">
       <div className="status-left">
         <span className={`dot ${loading ? 'dot-loading' : 'dot-ok'}`} />
         <span className="status-item">
-          最後更新：<strong>{formatTime(lastFetched)}</strong>
+          最後抓取：<strong>{formatTime(lastFetched)}</strong>
         </span>
         <span className="sep">｜</span>
         <span className="status-item">
-          資料時間：<strong>{dataAge}</strong>
+          通報資料：<strong>{capTime}</strong>
+        </span>
+        <span className="sep">｜</span>
+        <span className="status-item">
+          地圖資料：<strong>{kmlTime}</strong>
         </span>
       </div>
       <div className="status-right">

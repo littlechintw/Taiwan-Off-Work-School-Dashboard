@@ -299,6 +299,70 @@ h1 { font-size: 16px; font-weight: 700; white-space: nowrap; }
 .app-footer a { color: var(--blue); text-decoration: none; }
 .app-footer a:hover { text-decoration: underline; }
 
+/* ===== KML map labels ===== */
+.kml-county-label {
+  background: rgba(255,255,255,0.88) !important;
+  border: none !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.18) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #1e293b !important;
+  padding: 2px 5px !important;
+  border-radius: 3px !important;
+  white-space: nowrap !important;
+  pointer-events: none !important;
+}
+.kml-county-label::before { display: none !important; }
+
+/* ===== Outer islands panel ===== */
+.outer-islands-panel {
+  position: absolute;
+  bottom: 36px;
+  left: 10px;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: none;
+}
+.island-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.92);
+  border-radius: 5px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.14);
+  backdrop-filter: blur(4px);
+}
+.island-name { color: #1e293b; }
+.island-both   { border-left: 3px solid #ef4444; }
+.island-work   { border-left: 3px solid #f97316; }
+.island-school { border-left: 3px solid #3b82f6; }
+.island-normal { border-left: 3px solid #94a3b8; }
+.island-both   .island-status { color: #ef4444; }
+.island-work   .island-status { color: #f97316; }
+.island-school .island-status { color: #3b82f6; }
+.island-normal .island-status { color: #94a3b8; }
+
+/* ===== District chips in list ===== */
+.district-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.district-chip {
+  font-size: 11px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 1px 6px;
+  color: #475569;
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 700px) {
   .view-split { flex-direction: column; }

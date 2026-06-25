@@ -34,6 +34,7 @@ export const App: React.FC = () => {
         <StatusBar
           lastFetched={data.lastFetched}
           latestDataTime={data.latestDataTime}
+          kmlDataTime={data.kmlDataTime}
           nextRefreshAt={data.nextRefreshAt}
           loading={data.loading}
           refreshInterval={interval}
@@ -70,7 +71,6 @@ export const App: React.FC = () => {
             政府資料開放平台
           </a>
         </span>
-        <span>授權：政府資料開放授權條款－第1版</span>
       </footer>
     </div>
   );
