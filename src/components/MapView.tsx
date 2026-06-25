@@ -43,20 +43,17 @@ function kmlStyle(feature?: GeoJSON.Feature): L.PathOptions {
 }
 
 const onEachKmlFeature = (feature: GeoJSON.Feature, layer: L.Layer) => {
-  const props = feature.properties as { countyName: string; status: KmlStatus } | null;
+  const props = feature.properties as { countyName: string; status: KmlStatus; isPartial?: boolean } | null;
   if (!props) return;
-  const { countyName, status } = props;
+  const { countyName, status, isPartial } = props;
 
   if (ACTIVE_STATUSES.includes(status)) {
+    const label = isPartial ? `部分區域${STATUS_TEXT[status]}` : STATUS_TEXT[status];
     (layer as L.Path).bindTooltip(
-      `<div class="kml-tip-name">${countyName}</div><div class="kml-tip-status">${STATUS_TEXT[status]}</div>`,
+      `<div class="kml-tip-name">${countyName}</div><div class="kml-tip-status">${label}</div>`,
       { permanent: true, direction: 'center', className: 'kml-county-label' },
     );
-  }
-
-  const statusText = STATUS_TEXT[status];
-  if (statusText) {
-    (layer as L.Path).bindPopup(`<strong>${countyName}</strong><br/>${statusText}`);
+    (layer as L.Path).bindPopup(`<strong>${countyName}</strong><br/>${label}`);
   }
 };
 

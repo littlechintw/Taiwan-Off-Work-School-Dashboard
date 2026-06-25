@@ -101,14 +101,32 @@ export async function parseKmz(buffer: ArrayBuffer): Promise<KmlFeature[]> {
   return [];
 }
 
+const ACTIVE_STATUSES: KmlStatus[] = ['both-stopped', 'school-only', 'work-only'];
+
 export function featuresToGeoJSON(features: KmlFeature[]): GeoJSON.FeatureCollection {
+  // A county is partially affected if it has active-status polygons AND non-active-status polygons
+  const countyHasNonActive = new Set<string>();
+  const countyHasActive = new Set<string>();
+  features.forEach((f) => {
+    if (f.polygons.length === 0) return;
+    if (ACTIVE_STATUSES.includes(f.status)) countyHasActive.add(f.countyName);
+    if (f.status === 'normal' || f.status === 'not-announced') countyHasNonActive.add(f.countyName);
+  });
+
   return {
     type: 'FeatureCollection',
     features: features
       .filter((f) => f.polygons.length > 0)
       .map((f) => ({
         type: 'Feature' as const,
-        properties: { countyName: f.countyName, status: f.status },
+        properties: {
+          countyName: f.countyName,
+          status: f.status,
+          isPartial:
+            ACTIVE_STATUSES.includes(f.status) &&
+            countyHasActive.has(f.countyName) &&
+            countyHasNonActive.has(f.countyName),
+        },
         geometry:
           f.polygons.length === 1
             ? ({ type: 'Polygon', coordinates: [f.polygons[0]] } as GeoJSON.Polygon)
