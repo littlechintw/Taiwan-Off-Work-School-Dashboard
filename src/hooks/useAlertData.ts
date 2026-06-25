@@ -5,27 +5,16 @@ import { parseKmz, featuresToGeoJSON, type KmlFeature } from '../utils/kmzParser
 
 const CAP_URL = 'https://alerts.ncdr.nat.gov.tw/RssAtomFeed.ashx?AlertType=33';
 const KMZ_URL = 'https://alerts.ncdr.nat.gov.tw/DownLoadNewAssistData.ashx/81';
-const CORS_PROXY = 'https://corsproxy.io/?';
+// Replace with your Cloudflare Worker URL after deploying cf-worker/worker.js
+const CORS_PROXY = 'https://twoff.littlechintw.workers.dev/?url=';
 
 async function fetchText(url: string): Promise<string> {
-  try {
-    const res = await fetch(url, { mode: 'cors' });
-    if (res.ok) return res.text();
-  } catch {
-    // fall through to proxy
-  }
   const res = await fetch(`${CORS_PROXY}${encodeURIComponent(url)}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.text();
 }
 
 async function fetchBinary(url: string): Promise<ArrayBuffer> {
-  try {
-    const res = await fetch(url, { mode: 'cors' });
-    if (res.ok) return res.arrayBuffer();
-  } catch {
-    // fall through to proxy
-  }
   const res = await fetch(`${CORS_PROXY}${encodeURIComponent(url)}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.arrayBuffer();
