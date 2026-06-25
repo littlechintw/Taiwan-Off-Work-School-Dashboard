@@ -19,16 +19,6 @@ function formatTime(d: Date | null): string {
   return d.toLocaleTimeString('zh-TW', { hour12: false });
 }
 
-function formatAgo(d: Date | null): string {
-  if (!d) return '';
-  const sec = Math.floor((Date.now() - d.getTime()) / 1000);
-  if (sec < 60) return `${sec} 秒前`;
-  const min = Math.floor(sec / 60);
-  if (min < 60) return `${min} 分鐘前`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr} 小時前`;
-  return `${Math.floor(hr / 24)} 天前`;
-}
 
 function formatCountdown(d: Date | null): string {
   if (!d) return '';

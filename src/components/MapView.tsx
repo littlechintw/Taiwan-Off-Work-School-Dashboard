@@ -123,7 +123,6 @@ export const MapView: React.FC<Props> = ({ alerts, kmlGeoJSON }) => {
       {/* Outer islands floating status panel */}
       <div className="outer-islands-panel">
         {outerIslands.map((island) => {
-          const active = island.stopWork || island.stopSchool;
           const cls = island.stopWork && island.stopSchool
             ? 'island-both'
             : island.stopWork ? 'island-work'
