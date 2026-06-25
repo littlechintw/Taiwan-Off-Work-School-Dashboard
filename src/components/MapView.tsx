@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { MapContainer, TileLayer, GeoJSON, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, GeoJSON, CircleMarker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { CapAlert } from '../types';
@@ -13,8 +13,11 @@ interface Props {
 
 interface CountyStatus {
   name: string;
+  lat: number;
+  lng: number;
   stopWork: boolean;
   stopSchool: boolean;
+  headlines: string[];
 }
 
 const OUTER_ISLANDS = ['澎湖縣', '金門縣', '連江縣'];
@@ -73,7 +76,7 @@ export const MapView: React.FC<Props> = ({ alerts, kmlGeoJSON }) => {
   const countyStatuses = useMemo<CountyStatus[]>(() => {
     const map = new Map<string, CountyStatus>();
     TAIWAN_COUNTIES.forEach((c) =>
-      map.set(c.name, { name: c.name, stopWork: false, stopSchool: false }),
+      map.set(c.name, { name: c.name, lat: c.lat, lng: c.lng, stopWork: false, stopSchool: false, headlines: [] }),
     );
     alerts.forEach((alert) => {
       if (alert.msgType === 'Cancel' || alert.status !== 'Actual') return;
@@ -84,6 +87,8 @@ export const MapView: React.FC<Props> = ({ alerts, kmlGeoJSON }) => {
           const s = map.get(county.name)!;
           s.stopWork = s.stopWork || area.stopWork;
           s.stopSchool = s.stopSchool || area.stopSchool;
+          const hl = info.headline || info.event;
+          if (hl && !s.headlines.includes(hl)) s.headlines.push(hl);
         });
       });
     });
@@ -118,6 +123,42 @@ export const MapView: React.FC<Props> = ({ alerts, kmlGeoJSON }) => {
             onEachFeature={onEachKmlFeature}
           />
         )}
+
+        {countyStatuses.map((county) => {
+          const active = county.stopWork || county.stopSchool;
+          const color = county.stopWork && county.stopSchool ? '#ef4444'
+            : county.stopWork ? '#f97316'
+            : county.stopSchool ? '#3b82f6'
+            : '#94a3b8';
+          return (
+            <CircleMarker
+              key={county.name}
+              center={[county.lat, county.lng]}
+              radius={active ? 14 : 6}
+              pathOptions={{
+                fillColor: color,
+                color: active ? '#fff' : '#64748b',
+                weight: active ? 2 : 1,
+                fillOpacity: active ? 0.9 : 0.25,
+              }}
+            >
+              <Popup>
+                <strong style={{ fontSize: 14 }}>{county.name}</strong>
+                {active ? (
+                  <div style={{ marginTop: 6 }}>
+                    {county.stopWork && <div>🚫 停止上班</div>}
+                    {county.stopSchool && <div>📚 停止上課</div>}
+                    {county.headlines.map((h, i) => (
+                      <div key={i} style={{ marginTop: 6, fontSize: 12, color: '#555' }}>{h}</div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ marginTop: 4, color: '#666' }}>目前無停班停課通報</div>
+                )}
+              </Popup>
+            </CircleMarker>
+          );
+        })}
       </MapContainer>
 
       {/* Outer islands floating status panel */}

@@ -27,7 +27,6 @@ function fmtDate(d: Date | null): string {
 export const ListView: React.FC<Props> = ({ alerts }) => {
   const active = alerts.filter((a) => a.status === 'Actual' && a.msgType !== 'Cancel');
 
-  // Group by county
   const countyMap = new Map<string, CountyGroup>();
   active.forEach((alert) => {
     alert.info.forEach((info) => {
@@ -88,7 +87,10 @@ export const ListView: React.FC<Props> = ({ alerts }) => {
               </div>
             </div>
 
-            {g.districts.length > 0 && (
+            {/* Show affected scope */}
+            {g.districts.length === 0 ? (
+              <div className="district-scope">全縣市</div>
+            ) : (
               <div className="district-list">
                 {g.districts.map((d) => (
                   <span key={d} className="district-chip">{d}</span>
@@ -97,6 +99,7 @@ export const ListView: React.FC<Props> = ({ alerts }) => {
             )}
 
             <div className="card-meta">
+              <span>發布：{fmtDate(g.latestSent)}</span>
               {g.earliestEffective && <span>生效：{fmtDate(g.earliestEffective)}</span>}
               {g.latestExpires && <span>到期：{fmtDate(g.latestExpires)}</span>}
             </div>
