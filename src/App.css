@@ -299,20 +299,63 @@ h1 { font-size: 16px; font-weight: 700; white-space: nowrap; }
 .app-footer a { color: var(--blue); text-decoration: none; }
 .app-footer a:hover { text-decoration: underline; }
 
+/* ===== List tabs ===== */
+.list-panel-inner { display: flex; flex-direction: column; height: 100%; }
+
+.list-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.list-tabs button {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+.list-tabs button:hover { color: var(--text); }
+.list-tabs button.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
+
+.tab-count {
+  display: inline-block;
+  background: var(--red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0 5px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+/* ===== Announcement text ===== */
+.announcement-text {
+  font-size: 12px;
+  color: var(--text);
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
 /* ===== KML map labels ===== */
 .kml-county-label {
-  background: rgba(255,255,255,0.88) !important;
+  background: rgba(255,255,255,0.92) !important;
   border: none !important;
   box-shadow: 0 1px 4px rgba(0,0,0,0.18) !important;
-  font-size: 11px !important;
-  font-weight: 700 !important;
-  color: #1e293b !important;
-  padding: 2px 5px !important;
+  padding: 3px 6px !important;
   border-radius: 3px !important;
   white-space: nowrap !important;
   pointer-events: none !important;
+  text-align: center !important;
 }
 .kml-county-label::before { display: none !important; }
+.kml-tip-name  { font-size: 12px; font-weight: 700; color: #1e293b; }
+.kml-tip-status { font-size: 10px; color: #ef4444; font-weight: 600; margin-top: 1px; }
 
 /* ===== Outer islands panel ===== */
 .outer-islands-panel {

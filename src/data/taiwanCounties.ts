@@ -32,11 +32,19 @@ export const TAIWAN_COUNTIES: CountyInfo[] = [
 
 export function findCounty(name: string): CountyInfo | undefined {
   const normalized = name.trim();
+  // Priority 1: exact county name match or normalized starts with full county name
+  const byName = TAIWAN_COUNTIES.find(
+    (c) => c.name === normalized || normalized.startsWith(c.name),
+  );
+  if (byName) return byName;
+
+  // Priority 2: exact alias match
+  const byAlias = TAIWAN_COUNTIES.find((c) => c.aliases.includes(normalized));
+  if (byAlias) return byAlias;
+
+  // Priority 3: loose matching for search input (short strings like "嘉義")
   return TAIWAN_COUNTIES.find(
     (c) =>
-      c.name === normalized ||
-      c.aliases.includes(normalized) ||
-      normalized.startsWith(c.name) ||
       c.name.startsWith(normalized) ||
       c.aliases.some((a) => normalized.startsWith(a) || a.startsWith(normalized)),
   );

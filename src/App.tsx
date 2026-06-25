@@ -53,7 +53,7 @@ export const App: React.FC = () => {
       <main className={`main view-${view}`}>
         {view !== 'list' && (
           <div className="map-panel">
-            <MapView alerts={data.alerts} kmlGeoJSON={data.kmlGeoJSON} />
+            <MapView kmlGeoJSON={data.kmlGeoJSON} />
           </div>
         )}
         {view !== 'map' && (

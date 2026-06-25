@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { CapAlert } from '../types';
 import { findCounty } from '../data/taiwanCounties';
 
@@ -24,7 +24,27 @@ function fmtDate(d: Date | null): string {
   });
 }
 
-export const ListView: React.FC<Props> = ({ alerts }) => {
+function cleanAnnouncement(desc: string): string {
+  return desc
+    .replace(/^\[停班停課通知\]/, '')
+    .replace(/行政院人事行政總處。.*$/, '')
+    .replace(/如有任何問題.*$/, '')
+    .trim();
+}
+
+function statusCls(stopWork: boolean, stopSchool: boolean) {
+  return stopWork && stopSchool ? 'both' : stopWork ? 'work' : stopSchool ? 'school' : 'normal';
+}
+
+const Empty = () => (
+  <div className="empty-state">
+    <div className="empty-icon">✅</div>
+    <h3>目前無停班停課通報</h3>
+    <p>資料將依設定間隔自動更新</p>
+  </div>
+);
+
+function GroupedView({ alerts }: { alerts: CapAlert[] }) {
   const active = alerts.filter((a) => a.status === 'Actual' && a.msgType !== 'Cancel');
 
   const countyMap = new Map<string, CountyGroup>();
@@ -37,10 +57,8 @@ export const ListView: React.FC<Props> = ({ alerts }) => {
 
         if (!countyMap.has(countyName)) {
           countyMap.set(countyName, {
-            countyName,
-            districts: [],
-            stopWork: false,
-            stopSchool: false,
+            countyName, districts: [],
+            stopWork: false, stopSchool: false,
             latestSent: alert.sent,
             earliestEffective: info.effective,
             latestExpires: info.expires,
@@ -62,50 +80,90 @@ export const ListView: React.FC<Props> = ({ alerts }) => {
   const groups = Array.from(countyMap.values()).sort(
     (a, b) => b.latestSent.getTime() - a.latestSent.getTime(),
   );
-
-  if (groups.length === 0) {
-    return (
-      <div className="empty-state">
-        <div className="empty-icon">✅</div>
-        <h3>目前無停班停課通報</h3>
-        <p>資料將依設定間隔自動更新</p>
-      </div>
-    );
-  }
+  if (groups.length === 0) return <Empty />;
 
   return (
     <div className="list-view">
-      {groups.map((g) => {
-        const cls = g.stopWork && g.stopSchool ? 'both' : g.stopWork ? 'work' : g.stopSchool ? 'school' : 'normal';
-        return (
-          <div key={g.countyName} className={`alert-card area-${cls}`}>
-            <div className="card-header">
-              <div className="card-title">{g.countyName}</div>
-              <div className="area-tags">
-                {g.stopWork && <span className="tag tag-work">停班</span>}
-                {g.stopSchool && <span className="tag tag-school">停課</span>}
-              </div>
-            </div>
-
-            {/* Show affected scope */}
-            {g.districts.length === 0 ? (
-              <div className="district-scope">全縣市</div>
-            ) : (
-              <div className="district-list">
-                {g.districts.map((d) => (
-                  <span key={d} className="district-chip">{d}</span>
-                ))}
-              </div>
-            )}
-
-            <div className="card-meta">
-              <span>發布：{fmtDate(g.latestSent)}</span>
-              {g.earliestEffective && <span>生效：{fmtDate(g.earliestEffective)}</span>}
-              {g.latestExpires && <span>到期：{fmtDate(g.latestExpires)}</span>}
+      {groups.map((g) => (
+        <div key={g.countyName} className={`alert-card area-${statusCls(g.stopWork, g.stopSchool)}`}>
+          <div className="card-header">
+            <div className="card-title">{g.countyName}</div>
+            <div className="area-tags">
+              {g.stopWork && <span className="tag tag-work">停班</span>}
+              {g.stopSchool && <span className="tag tag-school">停課</span>}
             </div>
           </div>
-        );
-      })}
+          {g.districts.length === 0 ? (
+            <div className="district-scope">全縣市</div>
+          ) : (
+            <div className="district-list">
+              {g.districts.map((d) => <span key={d} className="district-chip">{d}</span>)}
+            </div>
+          )}
+          <div className="card-meta">
+            <span>發布：{fmtDate(g.latestSent)}</span>
+            {g.earliestEffective && <span>生效：{fmtDate(g.earliestEffective)}</span>}
+            {g.latestExpires && <span>到期：{fmtDate(g.latestExpires)}</span>}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AllAlertsView({ alerts }: { alerts: CapAlert[] }) {
+  const active = alerts.filter((a) => a.status === 'Actual' && a.msgType !== 'Cancel');
+  if (active.length === 0) return <Empty />;
+
+  return (
+    <div className="list-view">
+      {active.flatMap((alert) =>
+        alert.info.flatMap((info) =>
+          info.areas.map((area, i) => {
+            const announcement = cleanAnnouncement(info.description);
+            return (
+              <div
+                key={`${alert.id}-${i}`}
+                className={`alert-card area-${statusCls(area.stopWork, area.stopSchool)}`}
+              >
+                <div className="card-header">
+                  <div className="card-title">{area.name}</div>
+                  <div className="area-tags">
+                    {area.stopWork && <span className="tag tag-work">停班</span>}
+                    {area.stopSchool && <span className="tag tag-school">停課</span>}
+                    {!area.stopWork && !area.stopSchool && <span className="tag tag-normal">通報</span>}
+                  </div>
+                </div>
+                {announcement && <p className="announcement-text">{announcement}</p>}
+                <div className="card-meta">
+                  <span>發布：{fmtDate(alert.sent)}</span>
+                  {info.effective && <span>生效：{fmtDate(info.effective)}</span>}
+                  {info.expires && <span>到期：{fmtDate(info.expires)}</span>}
+                </div>
+              </div>
+            );
+          }),
+        ),
+      )}
+    </div>
+  );
+}
+
+export const ListView: React.FC<Props> = ({ alerts }) => {
+  const [tab, setTab] = useState<'grouped' | 'all'>('grouped');
+  const activeCount = alerts.filter((a) => a.status === 'Actual' && a.msgType !== 'Cancel').length;
+
+  return (
+    <div className="list-panel-inner">
+      <div className="list-tabs">
+        <button className={tab === 'grouped' ? 'active' : ''} onClick={() => setTab('grouped')}>
+          縣市彙整
+        </button>
+        <button className={tab === 'all' ? 'active' : ''} onClick={() => setTab('all')}>
+          全部通報 {activeCount > 0 && <span className="tab-count">{activeCount}</span>}
+        </button>
+      </div>
+      {tab === 'grouped' ? <GroupedView alerts={alerts} /> : <AllAlertsView alerts={alerts} />}
     </div>
   );
 };
