@@ -38,7 +38,13 @@ function parseTWDateTime(s: string): Date | null {
 }
 
 function parseKml(text: string): KmlFeature[] {
-  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  // Inject missing xmlns:xsi so the strict XML parser doesn't bail on xsi:schemaLocation
+  const fixedText = text.replace(
+    /(<kml\b[^>]*)(>)/,
+    '$1 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"$2',
+  );
+  const doc = new DOMParser().parseFromString(fixedText, 'application/xml');
+  if (doc.documentElement?.tagName?.toLowerCase().includes('parsererror')) return [];
   const features: KmlFeature[] = [];
 
   // County folders are direct children of <Document>
