@@ -20,7 +20,7 @@ export const App: React.FC = () => {
       <header className="app-header">
         <div className="header-top">
           <div className="header-title">
-            <h1>🇹🇼 台灣天然災害停班停課</h1>
+            <h1>🇹🇼 台灣天然災害停班停課 <small>（非官方）</small></h1>
             {activeCount > 0 && <span className="alert-badge">{activeCount} 則通報</span>}
           </div>
           <nav className="view-nav">
@@ -63,20 +63,14 @@ export const App: React.FC = () => {
       </main>
 
       <footer className="app-footer">
+        <span>本工具為非官方服務，資料僅供參考</span>
         <span>
-          資料來源：
+          提供機關：行政院人事行政總處｜來源：
           <a href="https://data.gov.tw/dataset/20457" target="_blank" rel="noreferrer">
-            行政院人事行政總處
+            政府資料開放平台
           </a>
         </span>
         <span>授權：政府資料開放授權條款－第1版</span>
-        <span>聯絡：劉先生 (02)23979298#845</span>
-        <span>
-          原始資料：
-          <a href="https://alerts.ncdr.nat.gov.tw" target="_blank" rel="noreferrer">
-            NCDR 國家災害防救科技中心
-          </a>
-        </span>
       </footer>
     </div>
   );

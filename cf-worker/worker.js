@@ -1,3 +1,8 @@
+const ROUTES = {
+  '/cap': 'https://alerts.ncdr.nat.gov.tw/RssAtomFeed.ashx?AlertType=33',
+  '/kmz': 'https://alerts.ncdr.nat.gov.tw/DownLoadNewAssistData.ashx/81',
+};
+
 export default {
   async fetch(request) {
     if (request.method === 'OPTIONS') {
@@ -13,22 +18,14 @@ export default {
       return new Response('Method not allowed', { status: 405 });
     }
 
-    const targetUrl = new URL(request.url).searchParams.get('url');
+    const path = new URL(request.url).pathname;
+    const target = ROUTES[path];
 
-    if (!targetUrl) {
-      return new Response('Missing ?url= parameter', { status: 400 });
+    if (!target) {
+      return new Response('Not found', { status: 404 });
     }
 
-    const ALLOWED_URLS = [
-      'https://alerts.ncdr.nat.gov.tw/RssAtomFeed.ashx?AlertType=33',
-      'https://alerts.ncdr.nat.gov.tw/DownLoadNewAssistData.ashx/81',
-    ];
-
-    if (!ALLOWED_URLS.includes(targetUrl)) {
-      return new Response('Forbidden: URL not in allowlist', { status: 403 });
-    }
-
-    const res = await fetch(targetUrl);
+    const res = await fetch(target);
     const body = await res.arrayBuffer();
 
     return new Response(body, {

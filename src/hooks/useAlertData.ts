@@ -3,19 +3,16 @@ import type { CapAlert, DataState, RefreshInterval } from '../types';
 import { parseCapFeed } from '../utils/capParser';
 import { parseKmz, featuresToGeoJSON, type KmlFeature } from '../utils/kmzParser';
 
-const CAP_URL = 'https://alerts.ncdr.nat.gov.tw/RssAtomFeed.ashx?AlertType=33';
-const KMZ_URL = 'https://alerts.ncdr.nat.gov.tw/DownLoadNewAssistData.ashx/81';
-// Replace with your Cloudflare Worker URL after deploying cf-worker/worker.js
-const CORS_PROXY = 'https://twoff.littlechintw.workers.dev/?url=';
+const WORKER_BASE = 'https://twoff.littlechintw.workers.dev';
 
-async function fetchText(url: string): Promise<string> {
-  const res = await fetch(`${CORS_PROXY}${encodeURIComponent(url)}`);
+async function fetchText(path: string): Promise<string> {
+  const res = await fetch(`${WORKER_BASE}${path}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.text();
 }
 
-async function fetchBinary(url: string): Promise<ArrayBuffer> {
-  const res = await fetch(`${CORS_PROXY}${encodeURIComponent(url)}`);
+async function fetchBinary(path: string): Promise<ArrayBuffer> {
+  const res = await fetch(`${WORKER_BASE}${path}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.arrayBuffer();
 }
@@ -43,7 +40,7 @@ export function useAlertData(refreshIntervalMinutes: RefreshInterval): AlertData
     setState((prev) => ({ ...prev, loading: true, error: null }));
 
     try {
-      const xml = await fetchText(CAP_URL);
+      const xml = await fetchText('/cap');
       const alerts: CapAlert[] = parseCapFeed(xml);
 
       const latestDataTime =
@@ -62,7 +59,7 @@ export function useAlertData(refreshIntervalMinutes: RefreshInterval): AlertData
       });
 
       // KMZ is optional — don't fail the whole load if it errors
-      fetchBinary(KMZ_URL)
+      fetchBinary('/kmz')
         .then(async (buf) => {
           const features = await parseKmz(buf);
           setKmlFeatures(features);
