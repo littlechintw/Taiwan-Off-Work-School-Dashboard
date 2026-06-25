@@ -1,0 +1,102 @@
+import { useState, useEffect, useCallback, useRef } from 'react';
+import type { CapAlert, DataState, RefreshInterval } from '../types';
+import { parseCapFeed } from '../utils/capParser';
+import { parseKmz, featuresToGeoJSON, type KmlFeature } from '../utils/kmzParser';
+
+const CAP_URL = 'https://alerts.ncdr.nat.gov.tw/RssAtomFeed.ashx?AlertType=33';
+const KMZ_URL = 'https://alerts.ncdr.nat.gov.tw/DownLoadNewAssistData.ashx/81';
+const CORS_PROXY = 'https://corsproxy.io/?';
+
+async function fetchText(url: string): Promise<string> {
+  try {
+    const res = await fetch(url, { mode: 'cors' });
+    if (res.ok) return res.text();
+  } catch {
+    // fall through to proxy
+  }
+  const res = await fetch(`${CORS_PROXY}${encodeURIComponent(url)}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.text();
+}
+
+async function fetchBinary(url: string): Promise<ArrayBuffer> {
+  try {
+    const res = await fetch(url, { mode: 'cors' });
+    if (res.ok) return res.arrayBuffer();
+  } catch {
+    // fall through to proxy
+  }
+  const res = await fetch(`${CORS_PROXY}${encodeURIComponent(url)}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.arrayBuffer();
+}
+
+export interface AlertData extends DataState {
+  kmlFeatures: KmlFeature[];
+  kmlGeoJSON: GeoJSON.FeatureCollection | null;
+  refresh: () => void;
+}
+
+export function useAlertData(refreshIntervalMinutes: RefreshInterval): AlertData {
+  const [state, setState] = useState<DataState>({
+    alerts: [],
+    lastFetched: null,
+    latestDataTime: null,
+    nextRefreshAt: null,
+    loading: true,
+    error: null,
+  });
+  const [kmlFeatures, setKmlFeatures] = useState<KmlFeature[]>([]);
+  const [kmlGeoJSON, setKmlGeoJSON] = useState<GeoJSON.FeatureCollection | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fetchData = useCallback(async () => {
+    setState((prev) => ({ ...prev, loading: true, error: null }));
+
+    try {
+      const xml = await fetchText(CAP_URL);
+      const alerts: CapAlert[] = parseCapFeed(xml);
+
+      const latestDataTime =
+        alerts.length > 0
+          ? alerts.reduce<Date>((best, a) => (a.sent > best ? a.sent : best), alerts[0].sent)
+          : null;
+
+      const now = new Date();
+      setState({
+        alerts,
+        lastFetched: now,
+        latestDataTime,
+        nextRefreshAt: new Date(now.getTime() + refreshIntervalMinutes * 60 * 1000),
+        loading: false,
+        error: null,
+      });
+
+      // KMZ is optional — don't fail the whole load if it errors
+      fetchBinary(KMZ_URL)
+        .then(async (buf) => {
+          const features = await parseKmz(buf);
+          setKmlFeatures(features);
+          setKmlGeoJSON(featuresToGeoJSON(features));
+        })
+        .catch((e) => console.warn('KMZ load failed:', e));
+    } catch (err) {
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+        error: `資料載入失敗: ${err instanceof Error ? err.message : String(err)}`,
+      }));
+    }
+  }, [refreshIntervalMinutes]);
+
+  useEffect(() => {
+    fetchData();
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(fetchData, refreshIntervalMinutes * 60 * 1000);
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [fetchData, refreshIntervalMinutes]);
+
+  return { ...state, kmlFeatures, kmlGeoJSON, refresh: fetchData };
+}
