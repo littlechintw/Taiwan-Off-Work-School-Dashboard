@@ -37,8 +37,9 @@ export const App: React.FC = () => {
           </nav>
         </div>
         <StatusBar
-          lastFetched={data.lastFetched}
-          latestDataTime={data.latestDataTime}
+          capFetchedAt={data.lastFetched}
+          capDataTime={data.latestDataTime}
+          kmlFetchedAt={data.kmlFetchedAt}
           kmlDataTime={data.kmlDataTime}
           nextRefreshAt={data.nextRefreshAt}
           loading={data.loading}

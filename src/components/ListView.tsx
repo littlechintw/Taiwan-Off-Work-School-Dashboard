@@ -21,7 +21,7 @@ interface CountyGroup {
 function fmtDate(d: Date | null): string {
   if (!d) return '--';
   return d.toLocaleString('zh-TW', {
-    month: '2-digit', day: '2-digit',
+    year: 'numeric', month: '2-digit', day: '2-digit',
     hour: '2-digit', minute: '2-digit', hour12: false,
   });
 }

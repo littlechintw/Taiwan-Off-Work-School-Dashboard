@@ -113,6 +113,22 @@ h1 { font-size: 16px; font-weight: 700; white-space: nowrap; }
 
 .status-item strong { color: #fff; }
 .sep { opacity: 0.4; }
+
+.status-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 5px;
+  padding: 2px 8px;
+}
+.group-label {
+  font-weight: 700;
+  color: #fff;
+  padding-right: 6px;
+  border-right: 1px solid rgba(255,255,255,0.25);
+}
 .countdown strong { color: #fde68a; }
 
 .btn-refresh {

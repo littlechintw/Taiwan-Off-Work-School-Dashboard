@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import type { RefreshInterval } from '../types';
 
 interface Props {
-  lastFetched: Date | null;
-  latestDataTime: Date | null;
+  capFetchedAt: Date | null;
+  capDataTime: Date | null;
+  kmlFetchedAt: Date | null;
   kmlDataTime: Date | null;
   nextRefreshAt: Date | null;
   loading: boolean;
@@ -32,8 +33,9 @@ function formatCountdown(d: Date | null): string {
 }
 
 export const StatusBar: React.FC<Props> = ({
-  lastFetched,
-  latestDataTime,
+  capFetchedAt,
+  capDataTime,
+  kmlFetchedAt,
   kmlDataTime,
   nextRefreshAt,
   loading,
@@ -47,23 +49,21 @@ export const StatusBar: React.FC<Props> = ({
     return () => clearInterval(t);
   }, []);
 
-  const capTime = latestDataTime ? formatTime(latestDataTime) : '尚無資料';
-  const kmlTime = kmlDataTime ? formatTime(kmlDataTime) : '尚無資料';
-
   return (
     <div className="status-bar">
       <div className="status-left">
         <span className={`dot ${loading ? 'dot-loading' : 'dot-ok'}`} />
-        <span className="status-item">
-          最後抓取：<strong>{formatTime(lastFetched)}</strong>
+        <span className="status-group">
+          <span className="group-label">通報</span>
+          <span className="status-item">抓取：<strong>{formatTime(capFetchedAt)}</strong></span>
+          <span className="sep">·</span>
+          <span className="status-item">資料：<strong>{formatTime(capDataTime)}</strong></span>
         </span>
-        <span className="sep">｜</span>
-        <span className="status-item">
-          通報資料：<strong>{capTime}</strong>
-        </span>
-        <span className="sep">｜</span>
-        <span className="status-item">
-          地圖資料：<strong>{kmlTime}</strong>
+        <span className="status-group">
+          <span className="group-label">地圖</span>
+          <span className="status-item">抓取：<strong>{formatTime(kmlFetchedAt)}</strong></span>
+          <span className="sep">·</span>
+          <span className="status-item">資料：<strong>{formatTime(kmlDataTime)}</strong></span>
         </span>
       </div>
       <div className="status-right">
