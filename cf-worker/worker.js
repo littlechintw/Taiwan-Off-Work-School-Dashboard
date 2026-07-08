@@ -25,7 +25,8 @@ export default {
       return new Response('Not found', { status: 404 });
     }
 
-    const res = await fetch(target);
+    // Always hit NCDR live — never serve from Cloudflare's edge cache
+    const res = await fetch(target, { cache: 'no-store' });
     const body = await res.arrayBuffer();
 
     return new Response(body, {
@@ -33,7 +34,7 @@ export default {
       headers: {
         'Content-Type': res.headers.get('Content-Type') ?? 'application/octet-stream',
         'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'no-cache',
+        'Cache-Control': 'no-store',
       },
     });
   },

@@ -3,16 +3,16 @@ import type { CapAlert, DataState, RefreshInterval } from '../types';
 import { parseCapFeed } from '../utils/capParser';
 import { parseKmz, featuresToGeoJSON, type KmlFeature } from '../utils/kmzParser';
 
-const WORKER_BASE = 'https://twoff.littlechintw.workers.dev';
+const WORKER_BASE = 'https://twoff-api.littlechin.tw';
 
 async function fetchText(path: string): Promise<string> {
-  const res = await fetch(`${WORKER_BASE}${path}`);
+  const res = await fetch(`${WORKER_BASE}${path}`, { cache: 'no-store' });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.text();
 }
 
 async function fetchBinary(path: string): Promise<ArrayBuffer> {
-  const res = await fetch(`${WORKER_BASE}${path}`);
+  const res = await fetch(`${WORKER_BASE}${path}`, { cache: 'no-store' });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.arrayBuffer();
 }

@@ -32,4 +32,4 @@ export interface DataState {
   error: string | null;
 }
 
-export type RefreshInterval = 1 | 2 | 5 | 10 | 15 | 30;
+export type RefreshInterval = 3 | 5 | 10 | 15 | 30 | 60;

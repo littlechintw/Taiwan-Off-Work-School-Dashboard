@@ -12,14 +12,13 @@ interface Props {
   onRefreshNow: () => void;
 }
 
-const INTERVALS: RefreshInterval[] = [1, 2, 5, 10, 15, 30];
+const INTERVALS: RefreshInterval[] = [3, 5, 10, 15, 30, 60];
 
 function formatTime(d: Date | null): string {
   if (!d) return '--';
+  const date = d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' });
   const time = d.toLocaleTimeString('zh-TW', { hour12: false });
-  if (d.toDateString() === new Date().toDateString()) return time;
-  // Data older than today — show the date so stale feeds are obvious.
-  return `${d.toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit' })} ${time}`;
+  return `${date} ${time}`;
 }
 
 

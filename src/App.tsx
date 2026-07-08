@@ -11,7 +11,7 @@ type View = 'split' | 'map' | 'list';
 
 export const App: React.FC = () => {
   const [view, setView] = useState<View>('split');
-  const [interval, setInterval] = useState<RefreshInterval>(5);
+  const [interval, setInterval] = useState<RefreshInterval>(10);
   const data = useAlertData(interval);
 
   // The feed retains historical entries; only count/list alerts that are still in effect.
@@ -71,7 +71,7 @@ export const App: React.FC = () => {
       <footer className="app-footer">
         <span>本工具為非官方服務，資料僅供參考</span>
         <span>
-          提供機關：行政院人事行政總處｜來源：
+          來源：
           <a href="https://data.gov.tw/dataset/20457" target="_blank" rel="noreferrer">
             政府資料開放平台
           </a>
