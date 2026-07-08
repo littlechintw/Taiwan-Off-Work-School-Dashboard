@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { StatusBar } from './components/StatusBar';
 import { MapView } from './components/MapView';
 import { ListView } from './components/ListView';
 import { useAlertData } from './hooks/useAlertData';
+import { isCurrentAlert } from './utils/alertFilter';
 import type { RefreshInterval } from './types';
 import './App.css';
 
@@ -13,7 +14,11 @@ export const App: React.FC = () => {
   const [interval, setInterval] = useState<RefreshInterval>(5);
   const data = useAlertData(interval);
 
-  const activeCount = data.alerts.filter((a) => a.status === 'Actual' && a.msgType !== 'Cancel').length;
+  // The feed retains historical entries; only count/list alerts that are still in effect.
+  const currentAlerts = useMemo(
+    () => data.alerts.filter((a) => isCurrentAlert(a)),
+    [data.alerts],
+  );
 
   return (
     <div className="app">
@@ -21,7 +26,7 @@ export const App: React.FC = () => {
         <div className="header-top">
           <div className="header-title">
             <h1>🇹🇼 台灣天然災害停班停課 <small>（非官方）</small></h1>
-            {activeCount > 0 && <span className="alert-badge">{activeCount} 則通報</span>}
+            {currentAlerts.length > 0 && <span className="alert-badge">{currentAlerts.length} 則通報</span>}
           </div>
           <nav className="view-nav">
             {(['split', 'map', 'list'] as View[]).map((v) => (
@@ -58,7 +63,7 @@ export const App: React.FC = () => {
         )}
         {view !== 'map' && (
           <div className="list-panel">
-            <ListView alerts={data.alerts} />
+            <ListView alerts={data.alerts} currentAlerts={currentAlerts} />
           </div>
         )}
       </main>

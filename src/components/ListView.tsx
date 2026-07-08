@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
-import type { CapAlert } from '../types';
+import React, { useMemo, useState } from 'react';
+import type { CapAlert, AlertInfo } from '../types';
 import { findCounty } from '../data/taiwanCounties';
+import { isActualAlert, isCurrentAlert, latestSentTime } from '../utils/alertFilter';
 
 interface Props {
   alerts: CapAlert[];
+  currentAlerts: CapAlert[];
 }
 
 interface CountyGroup {
@@ -36,19 +38,28 @@ function statusCls(stopWork: boolean, stopSchool: boolean) {
   return stopWork && stopSchool ? 'both' : stopWork ? 'work' : stopSchool ? 'school' : 'normal';
 }
 
-const Empty = () => (
+function AlertMeta({ sent, info }: { sent: Date; info: AlertInfo }) {
+  return (
+    <div className="card-meta">
+      <span>發布：{fmtDate(sent)}</span>
+      {info.effective && <span>生效：{fmtDate(info.effective)}</span>}
+      {info.expires && <span>到期：{fmtDate(info.expires)}</span>}
+    </div>
+  );
+}
+
+const Empty = ({ lastAlertAt }: { lastAlertAt: Date | null }) => (
   <div className="empty-state">
     <div className="empty-icon">✅</div>
     <h3>目前無停班停課通報</h3>
     <p>資料將依設定間隔自動更新</p>
+    {lastAlertAt && <p className="empty-hint">最近一次通報：{fmtDate(lastAlertAt)}</p>}
   </div>
 );
 
-function GroupedView({ alerts }: { alerts: CapAlert[] }) {
-  const active = alerts.filter((a) => a.status === 'Actual' && a.msgType !== 'Cancel');
-
+function GroupedView({ currentAlerts, lastAlertAt }: { currentAlerts: CapAlert[]; lastAlertAt: Date | null }) {
   const countyMap = new Map<string, CountyGroup>();
-  active.forEach((alert) => {
+  currentAlerts.forEach((alert) => {
     alert.info.forEach((info) => {
       info.areas.forEach((area) => {
         const county = findCounty(area.name);
@@ -80,7 +91,7 @@ function GroupedView({ alerts }: { alerts: CapAlert[] }) {
   const groups = Array.from(countyMap.values()).sort(
     (a, b) => b.latestSent.getTime() - a.latestSent.getTime(),
   );
-  if (groups.length === 0) return <Empty />;
+  if (groups.length === 0) return <Empty lastAlertAt={lastAlertAt} />;
 
   return (
     <div className="list-view">
@@ -111,47 +122,68 @@ function GroupedView({ alerts }: { alerts: CapAlert[] }) {
   );
 }
 
-function AllAlertsView({ alerts }: { alerts: CapAlert[] }) {
-  const active = alerts.filter((a) => a.status === 'Actual' && a.msgType !== 'Cancel');
-  if (active.length === 0) return <Empty />;
+function AllAlertsView({ alerts, currentAlerts, lastAlertAt }: Props & { lastAlertAt: Date | null }) {
+  const [showHistory, setShowHistory] = useState(false);
+
+  const shown = useMemo(() => {
+    const source = showHistory ? alerts.filter(isActualAlert) : currentAlerts;
+    return [...source].sort((a, b) => b.sent.getTime() - a.sent.getTime());
+  }, [alerts, currentAlerts, showHistory]);
+
+  const hasHistory = alerts.filter(isActualAlert).length > currentAlerts.length;
+  const now = new Date();
 
   return (
-    <div className="list-view">
-      {active.flatMap((alert) =>
-        alert.info.flatMap((info) =>
-          info.areas.map((area, i) => {
-            const announcement = cleanAnnouncement(info.description);
-            return (
-              <div
-                key={`${alert.id}-${i}`}
-                className={`alert-card area-${statusCls(area.stopWork, area.stopSchool)}`}
-              >
-                <div className="card-header">
-                  <div className="card-title">{area.name}</div>
-                  <div className="area-tags">
-                    {area.stopWork && <span className="tag tag-work">停班</span>}
-                    {area.stopSchool && <span className="tag tag-school">停課</span>}
-                    {!area.stopWork && !area.stopSchool && <span className="tag tag-normal">通報</span>}
-                  </div>
-                </div>
-                {announcement && <p className="announcement-text">{announcement}</p>}
-                <div className="card-meta">
-                  <span>發布：{fmtDate(alert.sent)}</span>
-                  {info.effective && <span>生效：{fmtDate(info.effective)}</span>}
-                  {info.expires && <span>到期：{fmtDate(info.expires)}</span>}
-                </div>
-              </div>
-            );
-          }),
-        ),
+    <>
+      {hasHistory && (
+        <label className="history-toggle">
+          <input
+            type="checkbox"
+            checked={showHistory}
+            onChange={(e) => setShowHistory(e.target.checked)}
+          />
+          顯示歷史通報
+        </label>
       )}
-    </div>
+      {shown.length === 0 ? (
+        <Empty lastAlertAt={lastAlertAt} />
+      ) : (
+        <div className="list-view">
+          {shown.flatMap((alert) => {
+            const expired = !isCurrentAlert(alert, now);
+            return alert.info.flatMap((info) =>
+              info.areas.map((area, i) => {
+                const announcement = cleanAnnouncement(info.description);
+                return (
+                  <div
+                    key={`${alert.id}-${i}`}
+                    className={`alert-card area-${statusCls(area.stopWork, area.stopSchool)}${expired ? ' card-expired' : ''}`}
+                  >
+                    <div className="card-header">
+                      <div className="card-title">{area.name}</div>
+                      <div className="area-tags">
+                        {expired && <span className="tag tag-expired">已過期</span>}
+                        {area.stopWork && <span className="tag tag-work">停班</span>}
+                        {area.stopSchool && <span className="tag tag-school">停課</span>}
+                        {!area.stopWork && !area.stopSchool && <span className="tag tag-normal">通報</span>}
+                      </div>
+                    </div>
+                    {announcement && <p className="announcement-text">{announcement}</p>}
+                    <AlertMeta sent={alert.sent} info={info} />
+                  </div>
+                );
+              }),
+            );
+          })}
+        </div>
+      )}
+    </>
   );
 }
 
-export const ListView: React.FC<Props> = ({ alerts }) => {
+export const ListView: React.FC<Props> = ({ alerts, currentAlerts }) => {
   const [tab, setTab] = useState<'grouped' | 'all'>('grouped');
-  const activeCount = alerts.filter((a) => a.status === 'Actual' && a.msgType !== 'Cancel').length;
+  const lastAlertAt = useMemo(() => latestSentTime(alerts.filter(isActualAlert)), [alerts]);
 
   return (
     <div className="list-panel-inner">
@@ -160,10 +192,14 @@ export const ListView: React.FC<Props> = ({ alerts }) => {
           縣市彙整
         </button>
         <button className={tab === 'all' ? 'active' : ''} onClick={() => setTab('all')}>
-          全部通報 {activeCount > 0 && <span className="tab-count">{activeCount}</span>}
+          全部通報 {currentAlerts.length > 0 && <span className="tab-count">{currentAlerts.length}</span>}
         </button>
       </div>
-      {tab === 'grouped' ? <GroupedView alerts={alerts} /> : <AllAlertsView alerts={alerts} />}
+      {tab === 'grouped' ? (
+        <GroupedView currentAlerts={currentAlerts} lastAlertAt={lastAlertAt} />
+      ) : (
+        <AllAlertsView alerts={alerts} currentAlerts={currentAlerts} lastAlertAt={lastAlertAt} />
+      )}
     </div>
   );
 };
